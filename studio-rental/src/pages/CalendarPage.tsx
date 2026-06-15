@@ -1,12 +1,10 @@
 import { useState } from 'react';
-import { useAppState } from '../context/AppStateContext';
 import StudioCalendar from '../components/StudioCalendar';
 import BookingModal from '../components/BookingModal';
 import OrderDetailModal from '../components/OrderDetailModal';
-import { Order } from '../types';
+import type { Order } from '../types';
 
 export default function CalendarPage() {
-  const { state } = useAppState();
   const [showBooking, setShowBooking] = useState(false);
   const [initialStudioId, setInitialStudioId] = useState('');
   const [initialDate, setInitialDate] = useState('');

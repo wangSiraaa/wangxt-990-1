@@ -1,4 +1,4 @@
-import { OrderStatus, Role } from '../types';
+import type { OrderStatus, Role } from '../types';
 
 export function getStatusLabel(status: OrderStatus): string {
   const labels: Record<OrderStatus, string> = {

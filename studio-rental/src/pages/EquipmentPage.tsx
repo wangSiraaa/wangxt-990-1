@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAppState } from '../context/AppStateContext';
-import { EquipmentCategory } from '../types';
+import type { EquipmentCategory } from '../types';
 import { formatMoney } from '../utils/dateUtils';
 
 const categoryLabels: Record<EquipmentCategory | 'all', string> = {

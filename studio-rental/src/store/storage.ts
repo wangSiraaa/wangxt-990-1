@@ -1,4 +1,4 @@
-import { AppState, Order, MaintenanceDay } from '../types';
+import type { AppState, Order, MaintenanceDay } from '../types';
 import { 
   initialStudios, 
   initialEquipments, 

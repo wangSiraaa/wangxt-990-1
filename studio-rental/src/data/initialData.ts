@@ -1,4 +1,4 @@
-import { Studio, Equipment, Assistant, MaintenanceDay, Order } from '../types';
+import type { Studio, Equipment, Assistant, MaintenanceDay, Order } from '../types';
 
 export const initialStudios: Studio[] = [
   {

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAppState } from '../context/AppStateContext';
-import { Order, OrderStatus } from '../types';
+import type { Order, OrderStatus } from '../types';
 import { formatDateTime, formatMoney } from '../utils/dateUtils';
 import { getStatusLabel, getStatusColor } from '../components/StatusBadge';
 import OrderDetailModal from '../components/OrderDetailModal';

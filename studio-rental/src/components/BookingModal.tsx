@@ -1,10 +1,9 @@
 import { useState, useMemo } from 'react';
 import { useAppState } from '../context/AppStateContext';
-import { Studio, Equipment, Assistant, EquipmentCategory, ConflictInfo, DepositChannel } from '../types';
-import { formatMoney, formatDateTime } from '../utils/dateUtils';
+import type { Equipment, ConflictInfo, DepositChannel } from '../types';
+import { formatMoney } from '../utils/dateUtils';
 import { calculateOrderFees } from '../services/feeService';
 import { checkAllConflicts } from '../services/conflictService';
-import { getStatusLabel, getStatusColor, getDepositChannelLabel } from './StatusBadge';
 
 interface BookingModalProps {
   isOpen: boolean;

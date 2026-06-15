@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAppState } from '../context/AppStateContext';
-import { Order, OrderDamage, DepositChannel } from '../types';
-import { formatMoney, formatDateTime, formatTime, getDurationHours } from '../utils/dateUtils';
+import type { Order, DepositChannel } from '../types';
+import { formatMoney, formatDateTime, getDurationHours } from '../utils/dateUtils';
 import { getStatusLabel, getStatusColor, getDepositChannelLabel } from './StatusBadge';
 import { calculateFinalAmount } from '../services/feeService';
 
@@ -22,12 +22,18 @@ export default function OrderDetailModal({ order, isOpen, onClose }: OrderDetail
   const [rescheduleEndTime, setRescheduleEndTime] = useState('');
   const [showReschedule, setShowReschedule] = useState(false);
   const [error, setError] = useState('');
-  const [actualEndTime, setActualEndTime] = useState(order?.endTime || '');
+  const [actualEndTime, setActualEndTime] = useState('');
 
   if (!order || !isOpen) return null;
 
   const studio = studios.find(s => s.id === order.studioId);
   const finalFees = calculateFinalAmount(order);
+  
+  useEffect(() => {
+    if (order && order.endTime && actualEndTime === '') {
+      setActualEndTime(order.endTime);
+    }
+  }, [order, actualEndTime]);
 
   const handleConfirmDeposit = (channel: DepositChannel) => {
     const result = confirmDeposit(order.id, channel);
@@ -86,11 +92,6 @@ export default function OrderDetailModal({ order, isOpen, onClose }: OrderDetail
     setNewDamage({ equipmentId: '', description: '', cost: 0 });
   };
 
-  const handleRemoveDamage = (index: number) => {
-    const damages = order.damages.filter((_, i) => i !== index);
-    updateOrderDamages(order.id, damages);
-  };
-
   const durationHours = getDurationHours(order.startTime, order.endTime);
 
   return (
@@ -138,7 +139,7 @@ export default function OrderDetailModal({ order, isOpen, onClose }: OrderDetail
           <div className="grid grid-cols-2 gap-4">
             <InfoItem label="客户名称" value={order.customerName} />
             <InfoItem label="联系电话" value={order.customerPhone} />
-            {order.photographer && <InfoItem label="摄影师" value={order.photographer />} />
+            {order.photographer && <InfoItem label="摄影师" value={order.photographer} />}
             <InfoItem
               label="棚位"
               value={studio?.name || '-'}
@@ -338,9 +339,8 @@ export default function OrderDetailModal({ order, isOpen, onClose }: OrderDetail
           
           {order.status === 'in_progress' && (
             <button
-              onClick={() => setActualEndTime(order.endTime)}
+              onClick={handleCompleteOrder}
               className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
-              onClickCapture={handleCompleteOrder}
             >
               完成结算
             </button>

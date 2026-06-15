@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAppState } from '../context/AppStateContext';
-import { Order, DepositChannel } from '../types';
-import { formatMoney, formatDateTime, addDays, addHours, generateId, generateOrderNo, formatDate } from '../utils/dateUtils';
+import type { Order, DepositChannel } from '../types';
+import { formatMoney, addDays, addHours, generateId, generateOrderNo, formatDate } from '../utils/dateUtils';
 import { calculateOrderFees } from '../services/feeService';
 import { saveState } from '../store/storage';
 
@@ -12,7 +12,7 @@ interface ScenarioResult {
 }
 
 export default function ScenariosPage() {
-  const { state, resetAllData, confirmDeposit } = useAppState();
+  const { state, resetAllData } = useAppState();
   const { studios, equipments, assistants } = state;
   
   const [results, setResults] = useState<Record<string, ScenarioResult>>({});
@@ -152,7 +152,6 @@ export default function ScenariosPage() {
     );
     
     const now = new Date();
-    const depositExpires = addHours(now, 12);
     
     const order1: Order = {
       id: generateId('order'),
@@ -270,7 +269,6 @@ export default function ScenariosPage() {
       studios, equipments, assistants
     );
     
-    const scheduledHours = 4;
     const overtimeHours = 2.5;
     const hourlyRate = studio.basePricePerHour + 
       eqList.reduce((sum, e) => {

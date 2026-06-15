@@ -1,5 +1,5 @@
 import { useAppState } from '../context/AppStateContext';
-import { Role } from '../types';
+import type { Role } from '../types';
 import { getRoleLabel, getRoleColor } from './StatusBadge';
 
 interface HeaderProps {

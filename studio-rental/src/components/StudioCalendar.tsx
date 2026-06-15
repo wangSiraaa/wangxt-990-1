@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useAppState } from '../context/AppStateContext';
-import { getWeeksOfMonth, getMonthName, formatDate, formatTime, isSameDay, addDays } from '../utils/dateUtils';
+import { getWeeksOfMonth, getMonthName, formatDate, formatTime, isSameDay } from '../utils/dateUtils';
 import { getStatusColor } from './StatusBadge';
-import { Order, Studio } from '../types';
+import type { Order } from '../types';
 import { isStudioOnMaintenance } from '../store/storage';
 
 interface StudioCalendarProps {
@@ -180,7 +180,6 @@ export default function StudioCalendar({
 
                       <div className="mt-1 space-y-1">
                         {ordersForDay.slice(0, 3).map(order => {
-                          const studio = studios.find(s => s.id === order.studioId);
                           const isStartDay = isSameDay(order.startTime, date);
                           
                           return (

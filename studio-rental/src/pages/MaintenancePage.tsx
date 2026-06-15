@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAppState } from '../context/AppStateContext';
 import { formatDate } from '../utils/dateUtils';
 import OrderDetailModal from '../components/OrderDetailModal';
-import { Order } from '../types';
+import type { Order } from '../types';
 
 export default function MaintenancePage() {
   const { state, addMaintenanceDay, removeMaintenanceDay } = useAppState();

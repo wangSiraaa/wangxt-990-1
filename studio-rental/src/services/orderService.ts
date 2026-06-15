@@ -1,4 +1,4 @@
-import { Order, OrderStatus, DepositChannel, OrderDamage, AppState } from '../types';
+import type { Order, DepositChannel, OrderDamage, AppState } from '../types';
 import { generateId, generateOrderNo, addHours } from '../utils/dateUtils';
 import { calculateOrderFees, calculateOvertimeFee, calculatePenaltyFee, SETUP_DEFAULT_HOURS, TEARDOWN_DEFAULT_HOURS } from './feeService';
 import { checkAllConflicts } from './conflictService';

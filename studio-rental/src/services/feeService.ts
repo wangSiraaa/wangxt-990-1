@@ -1,4 +1,4 @@
-import { Order, Studio, Equipment, Assistant, OrderEquipment, FeeCalculation, OrderDamage } from '../types';
+import type { Order, Studio, Equipment, Assistant, OrderEquipment, FeeCalculation, OrderDamage } from '../types';
 import { getDurationHours } from '../utils/dateUtils';
 
 export const OVERTIME_RATE_MULTIPLIER = 1.5;

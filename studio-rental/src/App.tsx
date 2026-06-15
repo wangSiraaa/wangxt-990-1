@@ -8,7 +8,7 @@ import MaintenancePage from './pages/MaintenancePage';
 import PhotographerView from './pages/PhotographerView';
 import FinanceView from './pages/FinanceView';
 import ScenariosPage from './pages/ScenariosPage';
-import { Role } from './types';
+
 
 function AppContent() {
   const { state } = useAppState();

@@ -1,5 +1,6 @@
-import { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
-import { AppState, Role, Order, MaintenanceDay } from '../types';
+import { createContext, useContext, useReducer, useEffect } from 'react';
+import type { ReactNode } from 'react';
+import type { AppState, Role, MaintenanceDay } from '../types';
 import { getInitialState, saveState, checkAndExpireTempOrders, updateOrdersStatusByTime } from '../store/storage';
 import * as orderService from '../services/orderService';
 
@@ -12,7 +13,7 @@ interface AppStateContextType {
   confirmDeposit: (orderId: string, channel: Parameters<typeof orderService.confirmDeposit>[1]) => ReturnType<typeof orderService.confirmDeposit>;
   confirmOrder: (orderId: string) => ReturnType<typeof orderService.confirmOrder>;
   startOrder: (orderId: string) => ReturnType<typeof orderService.startOrder>;
-  completeOrder: (orderId: string, actualEndTime: string, damages?: Parameters<typeof orderService.completeOrder>[2]) => ReturnType<typeof orderService.completeOrder>;
+  completeOrder: (orderId: string, actualEndTime: string, damages?: Parameters<typeof orderService.completeOrder>[3]) => ReturnType<typeof orderService.completeOrder>;
   cancelOrder: (orderId: string) => ReturnType<typeof orderService.cancelOrder>;
   rescheduleOrder: (orderId: string, newStartTime: string, newEndTime: string) => ReturnType<typeof orderService.rescheduleOrder>;
   setOrderToPendingDeposit: (orderId: string) => ReturnType<typeof orderService.setOrderToPendingDeposit>;
@@ -115,7 +116,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     return result;
   };
 
-  const completeOrder = (orderId: string, actualEndTime: string, damages?: Parameters<typeof orderService.completeOrder>[2]) => {
+  const completeOrder = (orderId: string, actualEndTime: string, damages?: Parameters<typeof orderService.completeOrder>[3]) => {
     const result = orderService.completeOrder(orderId, actualEndTime, state, damages);
     if ('state' in result) {
       dispatch({ type: 'SET_STATE', payload: result.state });

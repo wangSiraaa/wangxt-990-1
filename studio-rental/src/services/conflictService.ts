@@ -1,4 +1,4 @@
-import { Order, Equipment, Assistant, Studio, ConflictInfo, AlternativeOption, MaintenanceDay } from '../types';
+import type { Order, Equipment, Assistant, Studio, ConflictInfo, AlternativeOption, MaintenanceDay } from '../types';
 import { isOverlapping, addHours, formatDate } from '../utils/dateUtils';
 import { isStudioOnMaintenance, getOrdersByStudioAndDate } from '../store/storage';
 
@@ -146,7 +146,7 @@ export function checkEquipmentConflicts(
   params: ConflictCheckParams,
   orders: Order[],
   equipments: Equipment[],
-  studios: Studio[]
+  _studios: Studio[]
 ): ConflictInfo[] {
   const conflicts: ConflictInfo[] = [];
   const { startTime, endTime, equipments: reqEquipments, excludeOrderId } = params;

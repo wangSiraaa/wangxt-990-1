@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAppState } from '../context/AppStateContext';
 import { formatMoney, formatDateTime } from '../utils/dateUtils';
 import { getStatusLabel, getStatusColor, getDepositChannelLabel } from '../components/StatusBadge';
-import { Order, DepositChannel } from '../types';
+import type { Order, DepositChannel } from '../types';
 import OrderDetailModal from '../components/OrderDetailModal';
 
 type FinanceTab = 'deposits' | 'settlements' | 'invoices';
