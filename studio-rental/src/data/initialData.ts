@@ -1,4 +1,86 @@
-import type { Studio, Equipment, Assistant, MaintenanceDay, Order } from '../types';
+import type { Studio, Equipment, Assistant, MaintenanceDay, Order, BookingSlot, OrderDeposit, TimePhase } from '../types';
+import { buildTimePhases } from '../services/feeService';
+
+function buildSlotFromLegacyOrder(
+  studioId: string,
+  startTime: string,
+  endTime: string,
+  equipments: { equipmentId: string; quantity: number }[],
+  assistantIds: string[],
+  setupTime: number,
+  teardownTime: number,
+  baseAmount: number,
+  equipmentAmount: number,
+  assistantAmount: number,
+  sceneName?: string
+): BookingSlot {
+  const phases = buildTimePhases(startTime, endTime, setupTime, teardownTime);
+  return {
+    id: `slot-${Math.random().toString(36).slice(2, 9)}`,
+    studioId,
+    startTime,
+    endTime,
+    phases,
+    equipments: equipments.map(e => ({ ...e })),
+    assistantIds: [...assistantIds],
+    setupTime,
+    teardownTime,
+    sceneName,
+    overtimeHours: 0,
+    overtimeFee: 0,
+    baseAmount,
+    equipmentAmount,
+    assistantAmount,
+  };
+}
+
+function buildDepositsFromLegacy(
+  baseAmount: number,
+  equipmentAmount: number,
+  totalAmount: number,
+  channel?: string,
+  confirmedAt?: string
+): OrderDeposit[] {
+  const deposits: OrderDeposit[] = [];
+  const studioDepositAmount = Math.ceil(baseAmount * 0.15 / 100) * 100;
+  const equipmentDepositAmount = Math.ceil(equipmentAmount * 0.3 / 100) * 100;
+  const overtimeRiskDepositAmount = Math.ceil(totalAmount * 0.1 / 100) * 100;
+
+  if (studioDepositAmount > 0) {
+    deposits.push({
+      id: `dep-studio-${Math.random().toString(36).slice(2, 9)}`,
+      type: 'studio',
+      amount: studioDepositAmount,
+      status: 'frozen',
+      frozenReason: '棚位使用押金',
+      channel: channel as any,
+      confirmedAt,
+    });
+  }
+  if (equipmentDepositAmount > 0) {
+    deposits.push({
+      id: `dep-equip-${Math.random().toString(36).slice(2, 9)}`,
+      type: 'equipment',
+      amount: equipmentDepositAmount,
+      status: 'frozen',
+      frozenReason: '设备使用押金',
+      channel: channel as any,
+      confirmedAt,
+    });
+  }
+  if (overtimeRiskDepositAmount > 0) {
+    deposits.push({
+      id: `dep-risk-${Math.random().toString(36).slice(2, 9)}`,
+      type: 'overtime_risk',
+      amount: overtimeRiskDepositAmount,
+      status: 'frozen',
+      frozenReason: '超时风险冻结',
+      channel: channel as any,
+      confirmedAt,
+    });
+  }
+  return deposits;
+}
 
 export const initialStudios: Studio[] = [
   {
@@ -208,6 +290,56 @@ export function generateInitialOrders(): Order[] {
   
   const start3 = new Date(fmtDate(day3) + 'T10:00:00');
   const end3 = new Date(fmtDate(day3) + 'T16:00:00');
+
+  const start4 = new Date(fmtDate(day5) + 'T08:00:00');
+  const end4 = new Date(fmtDate(day5) + 'T20:00:00');
+
+  const eq1 = [
+    { equipmentId: 'light-1', quantity: 3 },
+    { equipmentId: 'light-3', quantity: 3 },
+  ];
+  const slot1 = buildSlotFromLegacyOrder('studio-1', fmtDateTime(start1), fmtDateTime(end1), eq1, ['asst-1', 'asst-2'], 1, 0.5, 2400, 300, 900, '产品拍摄');
+  const subtotal1 = 2400 + 300 + 900;
+  const deposits1 = buildDepositsFromLegacy(2400, 300, subtotal1, 'alipay', fmtDateTime(new Date(now.getTime() - 3600000 * 2)));
+  const studioDeposit1 = deposits1.find(d => d.type === 'studio')?.amount || 0;
+  const equipDeposit1 = deposits1.find(d => d.type === 'equipment')?.amount || 0;
+  const riskDeposit1 = deposits1.find(d => d.type === 'overtime_risk')?.amount || 0;
+
+  const eq2 = [
+    { equipmentId: 'light-2', quantity: 4 },
+    { equipmentId: 'prop-1', quantity: 1 },
+    { equipmentId: 'prop-3', quantity: 2 },
+  ];
+  const slot2 = buildSlotFromLegacyOrder('studio-2', fmtDateTime(start2), fmtDateTime(end2), eq2, ['asst-3', 'asst-4'], 1, 1, 2400, 320, 1320, '时尚大片');
+  const subtotal2 = 2400 + 320 + 1320;
+  const deposits2 = buildDepositsFromLegacy(2400, 320, subtotal2);
+  const studioDeposit2 = deposits2.find(d => d.type === 'studio')?.amount || 0;
+  const equipDeposit2 = deposits2.find(d => d.type === 'equipment')?.amount || 0;
+  const riskDeposit2 = deposits2.find(d => d.type === 'overtime_risk')?.amount || 0;
+
+  const eq3 = [
+    { equipmentId: 'light-1', quantity: 2 },
+    { equipmentId: 'light-3', quantity: 2 },
+    { equipmentId: 'set-1', quantity: 1 },
+  ];
+  const slot3 = buildSlotFromLegacyOrder('studio-3', fmtDateTime(start3), fmtDateTime(end3), eq3, ['asst-5'], 0.5, 0.5, 2400, 230, 600, '个人写真');
+  const subtotal3 = 2400 + 230 + 600;
+  const deposits3 = buildDepositsFromLegacy(2400, 230, subtotal3, 'wechat', fmtDateTime(new Date(now.getTime() - 3600000 * 48)));
+  const studioDeposit3 = deposits3.find(d => d.type === 'studio')?.amount || 0;
+  const equipDeposit3 = deposits3.find(d => d.type === 'equipment')?.amount || 0;
+  const riskDeposit3 = deposits3.find(d => d.type === 'overtime_risk')?.amount || 0;
+
+  const eq4 = [
+    { equipmentId: 'light-1', quantity: 4 },
+    { equipmentId: 'light-2', quantity: 4 },
+    { equipmentId: 'set-3', quantity: 4 },
+  ];
+  const slot4 = buildSlotFromLegacyOrder('studio-1', fmtDateTime(start4), fmtDateTime(end4), eq4, ['asst-1', 'asst-2', 'asst-3'], 2, 1, 9600, 720, 1800, '电商产品全天拍摄');
+  const subtotal4 = 9600 + 720 + 1800;
+  const deposits4 = buildDepositsFromLegacy(9600, 720, subtotal4);
+  const studioDeposit4 = deposits4.find(d => d.type === 'studio')?.amount || 0;
+  const equipDeposit4 = deposits4.find(d => d.type === 'equipment')?.amount || 0;
+  const riskDeposit4 = deposits4.find(d => d.type === 'overtime_risk')?.amount || 0;
   
   return [
     {
@@ -219,19 +351,22 @@ export function generateInitialOrders(): Order[] {
       photographer: '王摄影师',
       startTime: fmtDateTime(start1),
       endTime: fmtDateTime(end1),
-      equipments: [
-        { equipmentId: 'light-1', quantity: 3 },
-        { equipmentId: 'light-3', quantity: 3 },
-      ],
+      slots: [slot1],
+      equipments: eq1,
       assistantIds: ['asst-1', 'asst-2'],
       setupTime: 1,
       teardownTime: 0.5,
       baseAmount: 2400,
       equipmentAmount: 300,
       assistantAmount: 900,
-      depositAmount: 1000,
+      deposits: deposits1,
+      depositAmount: studioDeposit1 + equipDeposit1 + riskDeposit1,
+      studioDepositAmount: studioDeposit1,
+      equipmentDepositAmount: equipDeposit1,
+      overtimeRiskDepositAmount: riskDeposit1,
       depositChannel: 'alipay',
       depositConfirmedAt: fmtDateTime(new Date(now.getTime() - 3600000 * 2)),
+      payments: [{ id: 'pay-1', type: 'deposit', amount: studioDeposit1 + equipDeposit1 + riskDeposit1, channel: 'alipay', confirmedAt: fmtDateTime(new Date(now.getTime() - 3600000 * 2)), notes: '押金支付' }],
       overtimeHours: 0,
       overtimeFee: 0,
       penaltyFee: 0,
@@ -243,6 +378,8 @@ export function generateInitialOrders(): Order[] {
         taxNo: '91110000MA01234567',
       },
       status: 'confirmed',
+      priceLocked: true,
+      originalPrice: subtotal1,
       notes: '客户需要提前30分钟到场布置',
       createdAt: fmtDateTime(new Date(now.getTime() - 3600000 * 24)),
       updatedAt: fmtDateTime(new Date(now.getTime() - 3600000 * 2)),
@@ -256,18 +393,20 @@ export function generateInitialOrders(): Order[] {
       photographer: '李摄影师',
       startTime: fmtDateTime(start2),
       endTime: fmtDateTime(end2),
-      equipments: [
-        { equipmentId: 'light-2', quantity: 4 },
-        { equipmentId: 'prop-1', quantity: 1 },
-        { equipmentId: 'prop-3', quantity: 2 },
-      ],
+      slots: [slot2],
+      equipments: eq2,
       assistantIds: ['asst-3', 'asst-4'],
       setupTime: 1,
       teardownTime: 1,
       baseAmount: 2400,
       equipmentAmount: 320,
       assistantAmount: 1320,
-      depositAmount: 1200,
+      deposits: deposits2,
+      depositAmount: studioDeposit2 + equipDeposit2 + riskDeposit2,
+      studioDepositAmount: studioDeposit2,
+      equipmentDepositAmount: equipDeposit2,
+      overtimeRiskDepositAmount: riskDeposit2,
+      payments: [],
       overtimeHours: 0,
       overtimeFee: 0,
       penaltyFee: 0,
@@ -275,6 +414,7 @@ export function generateInitialOrders(): Order[] {
       damages: [],
       invoiceRequired: false,
       status: 'pending_deposit',
+      priceLocked: false,
       depositExpiresAt: fmtDateTime(new Date(now.getTime() + 3600000 * 6)),
       notes: '需要客厅场景全天使用',
       createdAt: fmtDateTime(new Date(now.getTime() - 3600000 * 12)),
@@ -288,20 +428,22 @@ export function generateInitialOrders(): Order[] {
       customerPhone: '13700137003',
       startTime: fmtDateTime(start3),
       endTime: fmtDateTime(end3),
-      equipments: [
-        { equipmentId: 'light-1', quantity: 2 },
-        { equipmentId: 'light-3', quantity: 2 },
-        { equipmentId: 'set-1', quantity: 1 },
-      ],
+      slots: [slot3],
+      equipments: eq3,
       assistantIds: ['asst-5'],
       setupTime: 0.5,
       teardownTime: 0.5,
       baseAmount: 2400,
       equipmentAmount: 230,
       assistantAmount: 600,
-      depositAmount: 500,
+      deposits: deposits3,
+      depositAmount: studioDeposit3 + equipDeposit3 + riskDeposit3,
+      studioDepositAmount: studioDeposit3,
+      equipmentDepositAmount: equipDeposit3,
+      overtimeRiskDepositAmount: riskDeposit3,
       depositChannel: 'wechat',
       depositConfirmedAt: fmtDateTime(new Date(now.getTime() - 3600000 * 48)),
+      payments: [{ id: 'pay-3', type: 'deposit', amount: studioDeposit3 + equipDeposit3 + riskDeposit3, channel: 'wechat', confirmedAt: fmtDateTime(new Date(now.getTime() - 3600000 * 48)), notes: '押金支付' }],
       overtimeHours: 0,
       overtimeFee: 0,
       penaltyFee: 0,
@@ -318,20 +460,22 @@ export function generateInitialOrders(): Order[] {
       studioId: 'studio-1',
       customerName: '电商品牌',
       customerPhone: '13600136004',
-      startTime: fmtDateTime(new Date(fmtDate(day5) + 'T08:00:00')),
-      endTime: fmtDateTime(new Date(fmtDate(day5) + 'T20:00:00')),
-      equipments: [
-        { equipmentId: 'light-1', quantity: 4 },
-        { equipmentId: 'light-2', quantity: 4 },
-        { equipmentId: 'set-3', quantity: 4 },
-      ],
+      startTime: fmtDateTime(start4),
+      endTime: fmtDateTime(end4),
+      slots: [slot4],
+      equipments: eq4,
       assistantIds: ['asst-1', 'asst-2', 'asst-3'],
       setupTime: 2,
       teardownTime: 1,
       baseAmount: 9600,
       equipmentAmount: 720,
       assistantAmount: 1800,
-      depositAmount: 3000,
+      deposits: deposits4,
+      depositAmount: studioDeposit4 + equipDeposit4 + riskDeposit4,
+      studioDepositAmount: studioDeposit4,
+      equipmentDepositAmount: equipDeposit4,
+      overtimeRiskDepositAmount: riskDeposit4,
+      payments: [],
       overtimeHours: 0,
       overtimeFee: 0,
       penaltyFee: 0,
@@ -343,6 +487,8 @@ export function generateInitialOrders(): Order[] {
         taxNo: '91310000MA09876543',
       },
       status: 'confirmed',
+      priceLocked: true,
+      originalPrice: subtotal4,
       notes: '全天包场，产品拍摄',
       createdAt: fmtDateTime(new Date(now.getTime() - 3600000 * 96)),
       updatedAt: fmtDateTime(new Date(now.getTime() - 3600000 * 72)),

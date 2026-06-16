@@ -1,8 +1,9 @@
 import { createContext, useContext, useReducer, useEffect } from 'react';
 import type { ReactNode } from 'react';
-import type { AppState, Role, MaintenanceDay } from '../types';
+import type { AppState, Role, MaintenanceDay, DepositType, OrderDamage, CreateSlotParams, MaintenanceImpactOptionType, MaintenanceImpactOption, DepositChannel } from '../types';
 import { getInitialState, saveState, checkAndExpireTempOrders, updateOrdersStatusByTime } from '../store/storage';
 import * as orderService from '../services/orderService';
+import { generateMaintenanceImpactOptions } from '../services/orderService';
 
 interface AppStateContextType {
   state: AppState;
@@ -10,19 +11,28 @@ interface AppStateContextType {
   setCurrentDate: (date: string) => void;
   setSelectedStudioId: (id: string | null) => void;
   createTempOrder: (params: Parameters<typeof orderService.createTempOrder>[0]) => ReturnType<typeof orderService.createTempOrder>;
+  createMultiSlotTempOrder: (params: CreateMultiSlotOrderParams) => ReturnType<typeof orderService.createMultiSlotTempOrder>;
   confirmDeposit: (orderId: string, channel: Parameters<typeof orderService.confirmDeposit>[1]) => ReturnType<typeof orderService.confirmDeposit>;
+  collectFinalPayment: (orderId: string, channel: DepositChannel) => ReturnType<typeof orderService.collectFinalPayment>;
   confirmOrder: (orderId: string) => ReturnType<typeof orderService.confirmOrder>;
   startOrder: (orderId: string) => ReturnType<typeof orderService.startOrder>;
-  completeOrder: (orderId: string, actualEndTime: string, damages?: Parameters<typeof orderService.completeOrder>[3]) => ReturnType<typeof orderService.completeOrder>;
+  addEquipmentToOrder: (orderId: string, slotId: string | null, equipmentId: string, quantity: number) => ReturnType<typeof orderService.addEquipmentToOrder>;
+  completeOrder: (orderId: string, actualEndTime: string, damages?: OrderDamage[]) => ReturnType<typeof orderService.completeOrder>;
+  releaseDeposit: (orderId: string, depositType: DepositType, releaseAmount?: number) => ReturnType<typeof orderService.releaseDeposit>;
+  resolveDamage: (orderId: string, damageId: string, confirmedCost: number) => ReturnType<typeof orderService.resolveDamage>;
   cancelOrder: (orderId: string) => ReturnType<typeof orderService.cancelOrder>;
   rescheduleOrder: (orderId: string, newStartTime: string, newEndTime: string) => ReturnType<typeof orderService.rescheduleOrder>;
+  handleMaintenanceImpact: (orderId: string, optionType: MaintenanceImpactOptionType, optionData?: Partial<MaintenanceImpactOption>) => ReturnType<typeof orderService.handleMaintenanceImpact>;
   setOrderToPendingDeposit: (orderId: string) => ReturnType<typeof orderService.setOrderToPendingDeposit>;
-  updateOrderDamages: (orderId: string, damages: Parameters<typeof orderService.updateOrderDamages>[1]) => ReturnType<typeof orderService.updateOrderDamages>;
-  addMaintenanceDay: (studioId: string, date: string, reason: string) => { maintenanceDay?: MaintenanceDay; error?: string };
+  updateOrderDamages: (orderId: string, damages: OrderDamage[]) => ReturnType<typeof orderService.updateOrderDamages>;
+  addMaintenanceDay: (studioId: string, date: string, reason: string, startTime?: string, endTime?: string) => { maintenanceDay?: MaintenanceDay; error?: string };
   removeMaintenanceDay: (id: string) => boolean;
   refreshState: () => void;
   resetAllData: () => void;
+  setState: (state: AppState) => void;
 }
+
+type CreateMultiSlotOrderParams = Parameters<typeof orderService.createMultiSlotTempOrder>[0];
 
 const AppStateContext = createContext<AppStateContextType | null>(null);
 
@@ -92,8 +102,24 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     return result;
   };
 
+  const createMultiSlotTempOrder = (params: CreateMultiSlotOrderParams) => {
+    const result = orderService.createMultiSlotTempOrder(params, state);
+    if ('state' in result) {
+      dispatch({ type: 'SET_STATE', payload: result.state });
+    }
+    return result;
+  };
+
   const confirmDeposit = (orderId: string, channel: Parameters<typeof orderService.confirmDeposit>[1]) => {
     const result = orderService.confirmDeposit(orderId, channel, state);
+    if ('state' in result) {
+      dispatch({ type: 'SET_STATE', payload: result.state });
+    }
+    return result;
+  };
+
+  const collectFinalPayment = (orderId: string, channel: DepositChannel) => {
+    const result = orderService.collectFinalPayment(orderId, channel, state);
     if ('state' in result) {
       dispatch({ type: 'SET_STATE', payload: result.state });
     }
@@ -116,8 +142,32 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     return result;
   };
 
-  const completeOrder = (orderId: string, actualEndTime: string, damages?: Parameters<typeof orderService.completeOrder>[3]) => {
+  const addEquipmentToOrder = (orderId: string, slotId: string | null, equipmentId: string, quantity: number) => {
+    const result = orderService.addEquipmentToOrder(orderId, slotId, equipmentId, quantity, state);
+    if ('state' in result) {
+      dispatch({ type: 'SET_STATE', payload: result.state });
+    }
+    return result;
+  };
+
+  const completeOrder = (orderId: string, actualEndTime: string, damages?: OrderDamage[]) => {
     const result = orderService.completeOrder(orderId, actualEndTime, state, damages);
+    if ('state' in result) {
+      dispatch({ type: 'SET_STATE', payload: result.state });
+    }
+    return result;
+  };
+
+  const releaseDeposit = (orderId: string, depositType: DepositType, releaseAmount?: number) => {
+    const result = orderService.releaseDeposit(orderId, depositType, releaseAmount, state);
+    if ('state' in result) {
+      dispatch({ type: 'SET_STATE', payload: result.state });
+    }
+    return result;
+  };
+
+  const resolveDamage = (orderId: string, damageId: string, confirmedCost: number) => {
+    const result = orderService.resolveDamage(orderId, damageId, confirmedCost, state);
     if ('state' in result) {
       dispatch({ type: 'SET_STATE', payload: result.state });
     }
@@ -140,6 +190,18 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     return result;
   };
 
+  const handleMaintenanceImpact = (
+    orderId: string,
+    optionType: MaintenanceImpactOptionType,
+    optionData?: Partial<MaintenanceImpactOption>
+  ) => {
+    const result = orderService.handleMaintenanceImpact(orderId, optionType, optionData, state);
+    if ('state' in result) {
+      dispatch({ type: 'SET_STATE', payload: result.state });
+    }
+    return result;
+  };
+
   const setOrderToPendingDeposit = (orderId: string) => {
     const result = orderService.setOrderToPendingDeposit(orderId, state);
     if ('state' in result) {
@@ -148,7 +210,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     return result;
   };
 
-  const updateOrderDamages = (orderId: string, damages: Parameters<typeof orderService.updateOrderDamages>[1]) => {
+  const updateOrderDamages = (orderId: string, damages: OrderDamage[]) => {
     const result = orderService.updateOrderDamages(orderId, damages, state);
     if ('state' in result) {
       dispatch({ type: 'SET_STATE', payload: result.state });
@@ -156,7 +218,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     return result;
   };
 
-  const addMaintenanceDay = (studioId: string, date: string, reason: string) => {
+  const addMaintenanceDay = (studioId: string, date: string, reason: string, startTime?: string, endTime?: string) => {
     const existing = state.maintenanceDays.find(m => m.studioId === studioId && m.date === date);
     if (existing) {
       return { error: '该日期已有维护计划' };
@@ -167,24 +229,34 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       studioId,
       date,
       reason,
+      startTime,
+      endTime,
       createdAt: new Date().toISOString(),
       notifiedOrders: [],
     };
 
     const affectedOrders = state.orders.filter(order => {
-      if (order.studioId !== studioId) return false;
       if (order.status === 'expired' || order.status === 'cancelled' || order.status === 'completed') return false;
-      
-      const startDate = order.startTime.slice(0, 10);
-      const endDate = order.endTime.slice(0, 10);
-      return date >= startDate && date <= endDate;
+
+      const checkSlots = order.slots && order.slots.length > 0 ? order.slots : [
+        { studioId: order.studioId, startTime: order.startTime, endTime: order.endTime }
+      ];
+
+      return checkSlots.some(slot => {
+        if (slot.studioId !== studioId) return false;
+        const startDate = slot.startTime.slice(0, 10);
+        const endDate = slot.endTime.slice(0, 10);
+        return date >= startDate && date <= endDate;
+      });
     });
 
     const updatedOrders = state.orders.map(order => {
       if (affectedOrders.some(o => o.id === order.id)) {
+        const impact = generateMaintenanceImpactOptions(order, newMaint.id, state);
         return {
           ...order,
           affectedByMaintenance: newMaint.id,
+          maintenanceImpact: impact,
           updatedAt: new Date().toISOString(),
         };
       }
@@ -210,6 +282,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         return {
           ...order,
           affectedByMaintenance: undefined,
+          maintenanceImpact: undefined,
           rescheduleOption: undefined,
           updatedAt: new Date().toISOString(),
         };
@@ -237,24 +310,35 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'SET_STATE', payload: fresh });
   };
 
+  const setState = (newState: AppState) => {
+    dispatch({ type: 'SET_STATE', payload: newState });
+  };
+
   const value: AppStateContextType = {
     state,
     setRole,
     setCurrentDate,
     setSelectedStudioId,
     createTempOrder,
+    createMultiSlotTempOrder,
     confirmDeposit,
+    collectFinalPayment,
     confirmOrder,
     startOrder,
+    addEquipmentToOrder,
     completeOrder,
+    releaseDeposit,
+    resolveDamage,
     cancelOrder,
     rescheduleOrder,
+    handleMaintenanceImpact,
     setOrderToPendingDeposit,
     updateOrderDamages,
     addMaintenanceDay,
     removeMaintenanceDay,
     refreshState,
     resetAllData,
+    setState,
   };
 
   return (

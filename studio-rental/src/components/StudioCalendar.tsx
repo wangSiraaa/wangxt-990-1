@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAppState } from '../context/AppStateContext';
 import { getWeeksOfMonth, getMonthName, formatDate, formatTime, isSameDay } from '../utils/dateUtils';
 import { getStatusColor } from './StatusBadge';
-import type { Order } from '../types';
+import type { Order, TimePhase } from '../types';
 import { isStudioOnMaintenance } from '../store/storage';
 
 interface StudioCalendarProps {
@@ -10,6 +10,38 @@ interface StudioCalendarProps {
   onOrderClick?: (order: Order) => void;
   showBookingButton?: boolean;
   onBookClick?: (studioId: string, date: string) => void;
+}
+
+function getSlotPhasesForDate(order: Order, studioId: string, date: Date): TimePhase[] {
+  const dateStr = formatDate(date);
+  const matchingPhases: TimePhase[] = [];
+  for (const slot of order.slots) {
+    if (slot.studioId !== studioId) continue;
+    for (const phase of slot.phases) {
+      const phaseStart = phase.startTime.slice(0, 10);
+      const phaseEnd = phase.endTime.slice(0, 10);
+      if (dateStr >= phaseStart && dateStr <= phaseEnd) {
+        matchingPhases.push(phase);
+      }
+    }
+  }
+  return matchingPhases;
+}
+
+function getPhaseColor(type: string): string {
+  switch (type) {
+    case 'setup': return 'bg-amber-300';
+    case 'shooting': return 'bg-blue-400';
+    case 'teardown': return 'bg-gray-400';
+    default: return 'bg-gray-300';
+  }
+}
+
+function getPhaseWidth(phase: TimePhase, totalHours: number): number {
+  const start = new Date(phase.startTime).getTime();
+  const end = new Date(phase.endTime).getTime();
+  const hours = (end - start) / 3600000;
+  return Math.max(8, (hours / totalHours) * 100);
 }
 
 export default function StudioCalendar({ 
@@ -45,12 +77,11 @@ export default function StudioCalendar({
     const dateStr = formatDate(date);
     
     return orders.filter(order => {
-      if (order.studioId !== studioId) return false;
       if (order.status === 'expired' || order.status === 'cancelled') return false;
-      
+      const hasSlotOnStudio = order.slots.some(s => s.studioId === studioId);
+      if (!hasSlotOnStudio && order.studioId !== studioId) return false;
       const startDate = order.startTime.slice(0, 10);
       const endDate = order.endTime.slice(0, 10);
-      
       return dateStr >= startDate && dateStr <= endDate;
     });
   };
@@ -181,21 +212,53 @@ export default function StudioCalendar({
                       <div className="mt-1 space-y-1">
                         {ordersForDay.slice(0, 3).map(order => {
                           const isStartDay = isSameDay(order.startTime, date);
-                          
+                          const phases = selectedStudioId && date
+                            ? getSlotPhasesForDate(order, selectedStudioId, date)
+                            : [];
+                          const totalPhaseHours = phases.reduce((s, p) => {
+                            return s + (new Date(p.endTime).getTime() - new Date(p.startTime).getTime()) / 3600000;
+                          }, 0);
+                          const hasMultiSlot = order.slots.length > 1;
+
                           return (
                             <div
                               key={order.id}
-                              className={`text-xs px-1.5 py-0.5 rounded truncate cursor-pointer ${getStatusColor(order.status)} border`}
+                              className={`text-xs rounded overflow-hidden cursor-pointer border ${getStatusColor(order.status)}`}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 onOrderClick?.(order);
                               }}
-                              title={`${order.customerName} - ${formatTime(order.startTime)} - ${formatTime(order.endTime)}`}
+                              title={`${order.customerName} - ${formatTime(order.startTime)} - ${formatTime(order.endTime)}${hasMultiSlot ? ' (多时段)' : ''}`}
                             >
-                              {isStartDay && (
-                                <span className="opacity-70">{formatTime(order.startTime)} </span>
+                              {phases.length > 0 && totalPhaseHours > 0 ? (
+                                <div>
+                                  <div className="flex h-2">
+                                    {phases.map((phase, pi) => (
+                                      <div
+                                        key={pi}
+                                        className={`${getPhaseColor(phase.type)} ${pi === 0 ? 'rounded-l' : ''} ${pi === phases.length - 1 ? 'rounded-r' : ''}`}
+                                        style={{ width: `${getPhaseWidth(phase, totalPhaseHours)}%` }}
+                                        title={`${phase.type === 'setup' ? '布置' : phase.type === 'shooting' ? '拍摄' : '清场'} ${formatTime(phase.startTime)}-${formatTime(phase.endTime)}`}
+                                      />
+                                    ))}
+                                  </div>
+                                  <div className="px-1.5 py-0.5 truncate">
+                                    {isStartDay && (
+                                      <span className="opacity-70">{formatTime(order.startTime)} </span>
+                                    )}
+                                    {order.customerName}
+                                    {hasMultiSlot && <span className="ml-1 text-blue-600">[{order.slots.length}段]</span>}
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="px-1.5 py-0.5 truncate">
+                                  {isStartDay && (
+                                    <span className="opacity-70">{formatTime(order.startTime)} </span>
+                                  )}
+                                  {order.customerName}
+                                  {hasMultiSlot && <span className="ml-1 text-blue-600">[{order.slots.length}段]</span>}
+                                </div>
                               )}
-                              {order.customerName}
                             </div>
                           );
                         })}
@@ -227,7 +290,20 @@ export default function StudioCalendar({
       </div>
 
       <div className="p-3 bg-gray-50 border-t border-gray-200">
-        <div className="flex items-center gap-4 text-xs text-gray-500">
+        <div className="flex items-center gap-4 text-xs text-gray-500 flex-wrap">
+          <span className="flex items-center gap-1">
+            <span className="w-3 h-3 rounded bg-amber-300"></span>
+            布置期
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-3 h-3 rounded bg-blue-400"></span>
+            拍摄期
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-3 h-3 rounded bg-gray-400"></span>
+            清场期
+          </span>
+          <span className="text-gray-300">|</span>
           <span className="flex items-center gap-1">
             <span className="w-3 h-3 rounded bg-green-100 border border-green-300"></span>
             可预约
@@ -235,14 +311,6 @@ export default function StudioCalendar({
           <span className="flex items-center gap-1">
             <span className="w-3 h-3 rounded bg-blue-100 border border-blue-300"></span>
             已确认
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="w-3 h-3 rounded bg-yellow-100 border border-yellow-300"></span>
-            待付押金
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="w-3 h-3 rounded bg-purple-100 border border-purple-300"></span>
-            进行中
           </span>
           <span className="flex items-center gap-1">
             <span className="w-3 h-3 rounded bg-orange-100 border border-orange-300"></span>
